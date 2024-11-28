@@ -1,0 +1,172 @@
+create database marinkprova;
+-- Criação da tabela FormaPagamento
+CREATE TABLE FormaPagamento (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tipo VARCHAR(50) NOT NULL
+);
+
+-- Criação da tabela Cliente
+CREATE TABLE Cliente (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100)
+);
+
+-- Criação da tabela Produto
+CREATE TABLE Produto (
+    codigo INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    preco_unitario DECIMAL(10, 2) NOT NULL,
+    quantidade_estoque INT NOT NULL,
+    estoque_minimo INT NOT NULL,
+    marca VARCHAR(50)
+);
+
+-- Criação da tabela Mesa
+CREATE TABLE Mesa (
+    numero INT AUTO_INCREMENT PRIMARY KEY,
+    status ENUM('Livre', 'Ocupada', 'Ocupada-Ociosa', 'Sobremesa') NOT NULL
+);
+
+-- Criação da tabela Pedido
+CREATE TABLE Pedido (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_mesa INT NOT NULL,
+    id_cliente INT,
+    data_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_mesa) REFERENCES Mesa(numero) ON DELETE CASCADE,
+    FOREIGN KEY (id_cliente) REFERENCES Cliente(id) ON DELETE SET NULL
+);
+
+-- Criação da tabela ItemPedido
+CREATE TABLE ItemPedido (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_pedido INT NOT NULL,
+    codigo_produto INT NOT NULL,
+    quantidade INT NOT NULL,
+    preco_unitario DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (id_pedido) REFERENCES Pedido(id) ON DELETE CASCADE,
+    FOREIGN KEY (codigo_produto) REFERENCES Produto(codigo) ON DELETE CASCADE
+);
+
+CREATE TABLE Funcionario (
+    id INT AUTO_INCREMENT PRIMARY KEY,  -- Identificador único do funcionário
+    nome VARCHAR(100) NOT NULL,         -- Nome do funcionário
+    cargo VARCHAR(50),                  -- Cargo ou função do funcionário
+    data_contratacao DATE,              -- Data de contratação
+    salario DECIMAL(10, 2),             -- Salário do funcionário
+    status ENUM('Ativo', 'Inativo') DEFAULT 'Ativo'  -- Status de trabalho
+);
+
+-- Criação da tabela Pagamento
+CREATE TABLE Pagamento (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_pedido INT NOT NULL,
+    id_forma_pagamento INT NOT NULL,
+    valor_total DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (id_pedido) REFERENCES Pedido(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_forma_pagamento) REFERENCES FormaPagamento(id) ON DELETE CASCADE
+);
+
+-- Populando a tabela FormaPagamento
+INSERT INTO FormaPagamento (tipo) VALUES 
+('Dinheiro'),
+('Cartão de Crédito'),
+('Cartão de Débito'),
+('Pix');
+
+-- Populando a tabela Cliente
+INSERT INTO Cliente (nome) VALUES 
+('João Silva'),
+('Maria Oliveira'),
+('Carlos Souza'),
+('Ana Lima');
+
+-- Populando a tabela Produto
+INSERT INTO Produto (nome, preco_unitario, quantidade_estoque, estoque_minimo, marca) VALUES 
+('Hambúrguer', 25.00, 100, 10, 'FastFoodCo'),
+('Batata Frita', 10.00, 200, 20, 'SnackCo'),
+('Refrigerante', 5.00, 300, 30, 'DrinkCo'),
+('Sobremesa', 15.00, 50, 5, 'DessertCo');
+
+-- Populando a tabela Mesa
+INSERT INTO Mesa (status) VALUES 
+('Livre'),
+('Livre'),
+('Livre'),
+('Livre');
+
+-- Populando a tabela Pedido
+INSERT INTO Pedido (id_mesa, id_cliente, data_hora) VALUES 
+(1, 1, '2024-11-27 12:00:00'),
+(2, 2, '2024-11-27 12:30:00'),
+(3, NULL, '2024-11-27 13:00:00');
+
+-- Populando a tabela ItemPedido
+INSERT INTO ItemPedido (id_pedido, codigo_produto, quantidade, preco_unitario) VALUES 
+(1, 1, 2, 25.00),  -- Pedido de 2 hambúrgueres
+(1, 2, 1, 10.00),  -- Pedido de 1 batata frita
+(2, 3, 3, 5.00),   -- Pedido de 3 refrigerantes
+(3, 4, 1, 15.00);  -- Pedido de 1 sobremesa
+
+-- Populando a tabela Pagamento
+INSERT INTO Pagamento (id_pedido, id_forma_pagamento, valor_total) VALUES 
+(1, 2, 60.00),  -- Pedido 1 pago com cartão de crédito
+(2, 3, 15.00),  -- Pedido 2 pago com cartão de débito
+(3, 1, 15.00);  -- Pedido 3 pago em dinheiro
+
+ALTER TABLE Pedido 
+ADD COLUMN id_funcionario INT,
+ADD CONSTRAINT fk_pedido_funcionario FOREIGN KEY (id_funcionario) REFERENCES Funcionario(id) ON DELETE SET NULL;
+
+INSERT INTO Funcionario (nome, cargo, data_contratacao, salario, status) VALUES
+('João Santos', 'Garçom', '2022-01-15', 1800.00, 'Ativo'),
+('Maria Pereira', 'Garçom', '2021-09-01', 2000.00, 'Ativo'),
+('Carlos Silva', 'Supervisor', '2018-03-20', 3000.00, 'Ativo'),
+('Ana Lima', 'Atendente', '2023-06-10', 1500.00, 'Ativo');
+
+UPDATE Pedido SET id_funcionario = 1 WHERE id = 1; 
+UPDATE Pedido SET id_funcionario = 2 WHERE id = 2; 
+UPDATE Pedido SET id_funcionario = 3 WHERE id = 3; 
+
+SELECT 
+    Funcionario.nome AS Nome_Funcionario,
+    Mesa.numero AS Mesa_Atendida,
+    SUM(Pagamento.valor_total) AS Total_Gasto
+FROM 
+    Pedido
+INNER JOIN Funcionario ON Pedido.id_funcionario = Funcionario.id
+INNER JOIN Mesa ON Pedido.id_mesa = Mesa.numero
+INNER JOIN Pagamento ON Pedido.id = Pagamento.id_pedido
+GROUP BY 
+    Funcionario.nome, Mesa.numero
+ORDER BY 
+    Funcionario.nome, Mesa.numero;
+    
+    
+    SELECT 
+    Mesa.numero AS Mesa,
+    Produto.nome AS Produto,
+    SUM(ItemPedido.quantidade) AS Quantidade_Consumida
+FROM 
+    Pedido
+INNER JOIN ItemPedido ON Pedido.id = ItemPedido.id_pedido
+INNER JOIN Produto ON ItemPedido.codigo_produto = Produto.codigo
+INNER JOIN Mesa ON Pedido.id_mesa = Mesa.numero
+WHERE 
+    Mesa.numero = 1 -- Substituir "1" pelo número da mesa desejada
+GROUP BY 
+    Mesa.numero, Produto.nome;
+    
+    
+    DELIMITER //
+
+CREATE PROCEDURE RedefinirStatusMesaLivre (IN numeroMesa INT)
+BEGIN
+    UPDATE Mesa
+    SET status = 'Livre'
+    WHERE numero = numeroMesa;
+END //
+
+DELIMITER ;
+
+CALL RedefinirStatusMesaLivre(1); -- Substituir "1" pelo número da mesa desejada
